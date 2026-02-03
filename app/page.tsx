@@ -1,4 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import { Markdown } from '@/components/Markdown'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { NewsItem } from '@/types/database'
@@ -25,6 +27,14 @@ export default async function Home() {
             <p className="mx-auto max-w-[700px] text-zinc-500 md:text-xl dark:text-zinc-400">
               Your central hub for resources, discussions, and department updates.
             </p>
+            <div className="flex gap-4 mt-6">
+              <Button asChild size="lg" className="hover:scale-105 transition-transform">
+                <Link href="/forum">Join the Discussion</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="hover:scale-105 transition-transform">
+                <Link href="/resources">Browse Resources</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>

@@ -28,11 +28,13 @@ export function Navbar() {
                                 key={link.href}
                                 href={link.href}
                                 className={cn(
-                                    "transition-colors hover:text-foreground/80 flex items-center gap-2",
-                                    pathname === link.href ? "text-foreground" : "text-foreground/60"
+                                    "relative px-3 py-2 rounded-md transition-all duration-200 group flex items-center gap-2",
+                                    pathname === link.href
+                                        ? "text-primary bg-primary/10 font-semibold"
+                                        : "text-muted-foreground hover:text-primary hover:bg-muted"
                                 )}
                             >
-                                <link.icon className="h-4 w-4" />
+                                <link.icon className={cn("h-4 w-4 transition-transform group-hover:scale-110", pathname === link.href && "text-primary")} />
                                 {link.label}
                             </Link>
                         ))}
