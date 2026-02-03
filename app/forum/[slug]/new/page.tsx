@@ -45,8 +45,11 @@ function NewPostForm({ slug }: { slug: string }) {
     const [loading, setLoading] = useState(false)
 
     async function handleSubmit(formData: FormData) {
-        // Since we are client-side, we can just append, but here we already have inputs with names.
-        // We'll call the server action.
+        // Remove potentially duplicate 'content' entries from DOM inputs
+        formData.delete('content')
+        // Append the single source of truth
+        formData.append('content', content)
+
         const result = await createPost(formData)
         if (result?.error) {
             alert(result.error)
@@ -70,36 +73,65 @@ function NewPostForm({ slug }: { slug: string }) {
                     <Input name="title" required placeholder="e.g. Question about Angular Momentum" />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-4">
                     <label className="text-sm font-medium">Content</label>
-                    <Tabs defaultValue="write" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 max-w-[200px] mb-2">
-                            <TabsTrigger value="write">Write</TabsTrigger>
-                            <TabsTrigger value="preview">Preview</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="write">
+
+                    {/* Desktop Side-by-Side View (hidden on mobile) */}
+                    <div className="hidden lg:grid grid-cols-2 gap-6 h-[600px]">
+                        <div className="flex flex-col h-full space-y-2">
+                            <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Editor</div>
                             <Textarea
-                                name="content"
+                                // name="content" // Removed name attribute as content is passed via formData.set
                                 required
-                                placeholder="Write your post here... Markdown and LaTeX supported."
-                                className="min-h-[300px] font-mono"
+                                placeholder="Type your post here... Support Markdown & LaTeX ($E=mc^2$)"
+                                className="flex-1 font-mono resize-none p-4"
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
                             />
-                        </TabsContent>
-                        <TabsContent value="preview">
-                            <Card className="min-h-[300px]">
-                                <CardContent className="pt-6">
+                        </div>
+                        <div className="flex flex-col h-full space-y-2">
+                            <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Live Preview</div>
+                            <Card className="flex-1 overflow-auto bg-muted/30">
+                                <CardContent className="pt-6 prose dark:prose-invert max-w-none">
                                     {content ? (
                                         <Markdown content={content} />
                                     ) : (
-                                        <span className="text-muted-foreground italic">Nothing to preview</span>
+                                        <div className="flex h-full items-center justify-center text-muted-foreground italic">
+                                            Preview will appear here...
+                                        </div>
                                     )}
                                 </CardContent>
                             </Card>
-                        </TabsContent>
-                    </Tabs>
-                    <p className="text-xs text-muted-foreground">
+                        </div>
+                    </div>
+
+                    {/* Mobile Tabs View (hidden on desktop) */}
+                    <div className="lg:hidden">
+                        <Tabs defaultValue="write" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2 mb-4">
+                                <TabsTrigger value="write">Write</TabsTrigger>
+                                <TabsTrigger value="preview">Preview</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="write">
+                                <Textarea
+                                    // name="content-mobile" // Removed name attribute as content is passed via formData.set
+                                    placeholder="Write your post here..."
+                                    className="min-h-[300px] font-mono"
+                                    value={content}
+                                    onChange={(e) => setContent(e.target.value)}
+                                />
+                            </TabsContent>
+                            <TabsContent value="preview">
+                                <Card className="min-h-[300px]">
+                                    <CardContent className="pt-6">
+                                        {content ? <Markdown content={content} /> : <span className="text-muted-foreground italic">Nothing to preview</span>}
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        </Tabs>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground mt-2">
                         Use <code>$math$</code> for inline equations and <code>$$math$$</code> for block equations.
                     </p>
                 </div>
