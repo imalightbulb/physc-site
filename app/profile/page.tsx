@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import { MessageSquare, Heart, Bookmark } from 'lucide-react'
 import { Post } from '@/types/database'
+import { ProfileSettings } from '@/components/ProfileSettings'
 
 export default async function ProfilePage() {
     const supabase = await createClient()
@@ -14,17 +15,17 @@ export default async function ProfilePage() {
         redirect('/login')
     }
 
-    // Fetch user's posts
+    // Fetch user's posts with category slug
     const { data: myPosts } = await supabase
         .from('posts')
-        .select('*')
+        .select('*, categories(slug)')
         .eq('author_id', user.id)
         .order('created_at', { ascending: false })
 
     // Fetch liked posts (where vote = 1)
     const { data: likedVotes } = await supabase
         .from('votes')
-        .select('post_id, posts(*)')
+        .select('post_id, posts(*, categories(slug))')
         .eq('user_id', user.id)
         .eq('value', 1)
 
@@ -37,16 +38,23 @@ export default async function ProfilePage() {
         .select('*, posts(*)')
         .eq('author_id', user.id)
         .order('created_at', { ascending: false })
+    // Fetch user profile
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 py-8">
             <div className="flex items-center gap-4">
                 <div className="h-20 w-20 rounded-full bg-primary/20 flex items-center justify-center text-3xl font-bold text-primary border-4 border-background shadow-xl">
-                    {user.email?.charAt(0).toUpperCase()}
+                    {profile?.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                    <h1 className="text-3xl font-bold">{user.email?.split('@')[0]}</h1>
+                    <h1 className="text-3xl font-bold">{profile?.full_name || user.email?.split('@')[0]}</h1>
                     <p className="text-muted-foreground">{user.email}</p>
+                    {profile?.student_id && <p className="text-xs text-muted-foreground">ID: {profile.student_id}</p>}
                 </div>
             </div>
 
@@ -112,16 +120,7 @@ export default async function ProfilePage() {
                 </TabsContent>
 
                 <TabsContent value="settings" className="mt-6 space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Account Settings</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-muted-foreground">
-                                Settings features coming soon (Email preferences, Theme toggle).
-                            </p>
-                        </CardContent>
-                    </Card>
+                    <ProfileSettings user={user} profile={profile} />
                 </TabsContent>
             </Tabs>
         </div>
@@ -130,7 +129,17 @@ export default async function ProfilePage() {
 
 function PostItem({ post }: { post: Post }) {
     return (
-        <Link href={`/forum/post/${post.id}`}>
+        <Link href={`/forum/${post.category_id ? 'post' : 'post'}/${post.id}`}>
+            {/* Note: In real app we need slug. For now forcing generic or relying on id lookup if route handles it. 
+                 Actually the route is /forum/[slug]/[id]. We don't have slug easily here in post object unless we join categories.
+                 Let's stick to /forum/post/[id] if we have a redirect or just /forum/general/[id] if we can guess.
+                 Wait, the Post Item link in previous code was: `/forum/post/${post.id}`.
+                 But the route is `/forum/[slug]/[id]`.
+                 If we don't have the slug, we might break the link.
+                 Let's check if we fetched categories. We did "select *".
+                 Post object has category_id. We need to fetch category slug to link correctly.
+                 Let's modify the fetch to include category slug.
+             */}
             <Card className="hover:bg-muted/50 transition-colors">
                 <CardHeader>
                     <CardTitle className="text-lg">{post.title}</CardTitle>

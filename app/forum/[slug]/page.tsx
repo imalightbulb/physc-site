@@ -82,7 +82,7 @@ export default async function SubforumPage({ params }: Props) {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-card border rounded-xl shadow-sm">
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-bold tracking-tight">r/{slug}</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">f/{slug}</h1>
                     <p className="text-muted-foreground text-sm md:text-base">{category.description}</p>
                 </div>
                 <Link href={`/forum/${slug}/new`}>
@@ -101,7 +101,7 @@ export default async function SubforumPage({ params }: Props) {
                             <MessageSquare className="h-6 w-6 opacity-50" />
                         </div>
                         <h3 className="text-lg font-semibold">No posts yet</h3>
-                        <p className="text-sm">Be the first to start a conversation in r/{slug}!</p>
+                        <p className="text-sm">Be the first to start a conversation in f/{slug}!</p>
                     </div>
                 ) : (
                     posts.map((post) => (
@@ -122,7 +122,7 @@ export default async function SubforumPage({ params }: Props) {
                                     className="flex-1 min-w-0 p-4 pt-3 flex flex-col gap-2 cursor-pointer"
                                 >
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <span className="font-medium text-foreground">r/{slug}</span>
+                                        <span className="font-medium text-foreground">f/{slug}</span>
                                         <span>•</span>
                                         <span>Posted by {post.profiles?.email?.split('@')[0] || 'u/unknown'}</span>
                                         <span>•</span>
