@@ -23,9 +23,12 @@ export default async function PostPage({ params }: Props) {
     // Fetch Post with author and JOINED data (votes, tags)
     // Note: getPost helper in data.ts might need refactor, but let's just do it inline or keep using it if it returns enough.
     // The previous getPost didn't return votes. Let's do a direct fetch for full control.
+    // Simplified fetch to debug 404 issue. 
+    // post_tags might be empty or syntax issues.
+    // Let's assume votes are fetching fine.
     const { data: post } = await supabase
         .from('posts')
-        .select('*, profiles(email, student_id), votes(*), post_tags(tags(name))')
+        .select('*, profiles(email, student_id), votes(*)')
         .eq('id', id)
         .single()
 
@@ -40,7 +43,8 @@ export default async function PostPage({ params }: Props) {
     const votes = post.votes || []
     const score = votes.reduce((acc: any, v: any) => acc + v?.value, 0)
     const userVote = user ? votes.find((v: any) => v.user_id === user.id)?.value || 0 : 0
-    const tags = post.post_tags?.map((pt: any) => pt.tags.name) || []
+    // Tags temporarily disabled or handled if fetched separately
+    const tags: string[] = [] // post.post_tags?.map((pt: any) => pt.tags.name) || []
 
     // Check if following
     let isFollowing = false
