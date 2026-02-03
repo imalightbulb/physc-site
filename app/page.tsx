@@ -5,8 +5,11 @@ import { Markdown } from '@/components/Markdown'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { NewsItem } from '@/types/database'
 
+import { HomePageClient } from '@/components/HomePageClient'
+
 export default async function Home() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
   // Fetch news
   const { data: news, error } = await supabase
@@ -18,6 +21,7 @@ export default async function Home() {
 
   return (
     <div className="space-y-8">
+      <HomePageClient user={user} />
       <section className="text-center py-12 md:py-24 lg:py-32 bg-zinc-50 dark:bg-zinc-900 rounded-3xl">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center gap-4">
@@ -68,3 +72,4 @@ export default async function Home() {
     </div>
   )
 }
+

@@ -7,12 +7,37 @@ import { cn } from '@/lib/utils'
 import { Book, MessageSquare, Newspaper, LogIn, User } from 'lucide-react'
 import { ModeToggle } from './ModeToggle'
 
+import { createClient } from '@/utils/supabase/client' // Need client helper
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+
 type Props = {
-    user: any // Supabase User object or null
+    user: any // Initial user state from server
 }
 
-export function NavbarContent({ user }: Props) {
+export function NavbarContent({ user: initialUser }: Props) {
     const pathname = usePathname()
+    const [user, setUser] = useState(initialUser)
+    const router = useRouter()
+    const supabase = createClient()
+
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (session?.user) {
+                setUser(session.user)
+            } else {
+                setUser(null)
+            }
+            // Optional: refresh server components if needed
+            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+                router.refresh()
+            }
+        })
+
+        return () => {
+            subscription.unsubscribe()
+        }
+    }, [supabase, router])
 
     const links = [
         { href: '/', label: 'News', icon: Newspaper },
