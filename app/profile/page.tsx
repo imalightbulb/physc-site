@@ -31,6 +31,13 @@ export default async function ProfilePage() {
     // Extract posts from liked votes
     const likedPosts = likedVotes?.map((v: any) => v.posts).filter(Boolean) || []
 
+    // Fetch comments to show interaction history
+    const { data: myComments } = await supabase
+        .from('comments')
+        .select('*, posts(*)')
+        .eq('author_id', user.id)
+        .order('created_at', { ascending: false })
+
     return (
         <div className="max-w-4xl mx-auto space-y-8 py-8">
             <div className="flex items-center gap-4">
@@ -44,9 +51,10 @@ export default async function ProfilePage() {
             </div>
 
             <Tabs defaultValue="posts" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="posts">My Posts</TabsTrigger>
                     <TabsTrigger value="liked">Liked</TabsTrigger>
+                    <TabsTrigger value="comments">Comments</TabsTrigger>
                     <TabsTrigger value="settings">Settings</TabsTrigger>
                 </TabsList>
 
@@ -72,6 +80,33 @@ export default async function ProfilePage() {
                     ) : (
                         likedPosts.map((post: any) => (
                             <PostItem key={post.id} post={post} />
+                        ))
+                    )}
+                </TabsContent>
+
+                <TabsContent value="comments" className="mt-6 space-y-4">
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                        <MessageSquare className="h-5 w-5" /> My Comments
+                    </h2>
+                    {(!myComments || myComments.length === 0) ? (
+                        <p className="text-muted-foreground">You haven't commented on anything yet.</p>
+                    ) : (
+                        myComments.map((comment: any) => (
+                            <Link key={comment.id} href={`/forum/forum/post/${comment.post_id}`}>
+                                <Card className="hover:bg-muted/50 transition-colors mb-4">
+                                    <CardHeader className="py-3">
+                                        <CardTitle className="text-base font-medium">
+                                            On: {comment.posts?.title || 'Unknown Post'}
+                                        </CardTitle>
+                                        <div className="text-xs text-muted-foreground">
+                                            {new Date(comment.created_at).toLocaleDateString()}
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="py-3 pt-0 text-sm text-muted-foreground line-clamp-2">
+                                        "{comment.content}"
+                                    </CardContent>
+                                </Card>
+                            </Link>
                         ))
                     )}
                 </TabsContent>
