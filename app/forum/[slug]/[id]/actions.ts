@@ -2,6 +2,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
+// Dynamic import or direct import if circular dependency isnt an issue.
+// Using direct import since we are in a server action file.
+import { notifyFollowers } from '@/app/actions/post-actions'
 
 export async function createComment(formData: FormData) {
     const supabase = await createClient()
@@ -26,6 +29,13 @@ export async function createComment(formData: FormData) {
 
     if (error) {
         return { error: error.message }
+    }
+
+    // Fire and forget notification
+    try {
+        notifyFollowers(post_id, content).catch(console.error)
+    } catch (e) {
+        console.error("Notification error", e)
     }
 
     revalidatePath(`/forum/${slug}/${post_id}`)
