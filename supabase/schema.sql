@@ -111,3 +111,72 @@ create policy "Resources are viewable by authenticated users." on resources
 
 create policy "Authenticated users can upload resources." on resources
   for insert with check (auth.role() = 'authenticated');
+
+-- ==========================================
+-- PHASE 2B ADDITIONS: Votes, Tags, Following
+-- ==========================================
+
+-- Votes Table (Up/Down votes for Posts)
+create table votes (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) not null,
+  post_id uuid references posts(id) on delete cascade not null,
+  value integer not null check (value in (-1, 1)),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, post_id) -- One vote per user per post
+);
+
+alter table votes enable row level security;
+
+create policy "Votes are viewable by everyone." on votes
+  for select using (true);
+
+create policy "Authenticated users can vote." on votes
+  for insert with check (auth.role() = 'authenticated');
+
+create policy "Users can update own votes." on votes
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete own votes." on votes
+  for delete using (auth.uid() = user_id);
+
+-- Post Followers (For email notifications - logic to be implemented via Edge Functions later)
+create table post_followers (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) not null,
+  post_id uuid references posts(id) on delete cascade not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, post_id)
+);
+
+alter table post_followers enable row level security;
+
+create policy "Followers are viewable by everyone." on post_followers
+  for select using (true);
+
+create policy "Authenticated users can follow posts." on post_followers
+  for insert with check (auth.role() = 'authenticated');
+
+create policy "Users can unfollow own posts." on post_followers
+  for delete using (auth.uid() = user_id);
+
+-- Tags (Normalized Tags for Posts)
+-- Note: 'resources' allows free text tags array. For forum, let's normalize to allow tag pages.
+create table tags (
+  id uuid default gen_random_uuid() primary key,
+  name text not null unique
+);
+
+alter table tags enable row level security;
+create policy "Tags viewable by everyone" on tags for select using (true);
+create policy "Auth users can create tags" on tags for insert with check (auth.role() = 'authenticated');
+
+create table post_tags (
+  post_id uuid references posts(id) on delete cascade not null,
+  tag_id uuid references tags(id) on delete cascade not null,
+  primary key (post_id, tag_id)
+);
+
+alter table post_tags enable row level security;
+create policy "Post Tags viewable by everyone" on post_tags for select using (true);
+create policy "Auth users can add tags to posts" on post_tags for insert with check (auth.role() = 'authenticated');

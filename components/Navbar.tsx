@@ -46,10 +46,10 @@ export function Navbar() {
                     <div className="w-full flex-1 md:w-auto md:flex-none">
                         {/* Search could go here */}
                     </div>
-                    <Link href="/login">
+                    <Link href="/profile">
                         <Button variant="ghost" size="icon">
                             <LogIn className="h-4 w-4" />
-                            <span className="sr-only">Login</span>
+                            <span className="sr-only">Profile</span>
                         </Button>
                     </Link>
                 </div>
