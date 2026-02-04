@@ -15,22 +15,22 @@ export default async function ProfilePage() {
         redirect('/login')
     }
 
-    // Fetch user's posts with category slug
-    const { data: myPosts } = await supabase
+    // Fetch user's posts with category slug (removed votes join)
+    const { data: myPostsData } = await supabase
         .from('posts')
-        .select('*, categories(slug), votes(*), comments(count)')
+        .select('*, categories(slug), comments(count)')
         .eq('author_id', user.id)
         .order('created_at', { ascending: false })
 
     // Fetch liked posts (where vote = 1)
     const { data: likedVotes } = await supabase
         .from('votes')
-        .select('post_id, posts(*, categories(slug), votes(*), comments(count))')
+        .select('post_id, posts(*, categories(slug), comments(count))')
         .eq('user_id', user.id)
         .eq('value', 1)
 
     // Extract posts from liked votes
-    const likedPosts = likedVotes?.map((v: any) => v.posts).filter(Boolean) || []
+    let likedPosts = likedVotes?.map((v: any) => v.posts).filter(Boolean) || []
 
     // Fetch comments to show interaction history
     const { data: myComments } = await supabase
@@ -38,6 +38,40 @@ export default async function ProfilePage() {
         .select('*, posts(*, categories(slug))')
         .eq('author_id', user.id)
         .order('created_at', { ascending: false })
+
+    // Fetch votes for myPosts separately to avoid PGRST200
+    const myPostIds = myPostsData?.map((p: any) => p.id) || []
+    const { data: myPostVotes } = myPostIds.length > 0
+        ? await supabase.from('votes').select('*').in('post_id', myPostIds)
+        : { data: [] }
+
+    const myVotesByPost = (myPostVotes || []).reduce((acc: any, vote: any) => {
+        if (!acc[vote.post_id]) acc[vote.post_id] = []
+        acc[vote.post_id].push(vote)
+        return acc
+    }, {})
+
+    const myPosts = myPostsData?.map((post: any) => ({
+        ...post,
+        votes: myVotesByPost[post.id] || []
+    }))
+
+    // For liked posts, we might want votes too, but let's keep it simple for now or do the same:
+    const likedPostIds = likedPosts.map((p: any) => p.id)
+    const { data: likedPostVotes } = likedPostIds.length > 0
+        ? await supabase.from('votes').select('*').in('post_id', likedPostIds)
+        : { data: [] }
+
+    const likedVotesByPost = (likedPostVotes || []).reduce((acc: any, vote: any) => {
+        if (!acc[vote.post_id]) acc[vote.post_id] = []
+        acc[vote.post_id].push(vote)
+        return acc
+    }, {})
+
+    likedPosts = likedPosts.map((post: any) => ({
+        ...post,
+        votes: likedVotesByPost[post.id] || []
+    }))
     // Fetch user profile
     const { data: profile } = await supabase
         .from('profiles')
