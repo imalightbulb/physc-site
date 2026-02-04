@@ -18,14 +18,14 @@ export default async function ProfilePage() {
     // Fetch user's posts with category slug
     const { data: myPosts } = await supabase
         .from('posts')
-        .select('*, categories(slug)')
+        .select('*, categories(slug), votes(*), comments(count)')
         .eq('author_id', user.id)
         .order('created_at', { ascending: false })
 
     // Fetch liked posts (where vote = 1)
     const { data: likedVotes } = await supabase
         .from('votes')
-        .select('post_id, posts(*, categories(slug))')
+        .select('post_id, posts(*, categories(slug), votes(*), comments(count))')
         .eq('user_id', user.id)
         .eq('value', 1)
 
@@ -35,7 +35,7 @@ export default async function ProfilePage() {
     // Fetch comments to show interaction history
     const { data: myComments } = await supabase
         .from('comments')
-        .select('*, posts(*)')
+        .select('*, posts(*, categories(slug))')
         .eq('author_id', user.id)
         .order('created_at', { ascending: false })
     // Fetch user profile
@@ -71,10 +71,10 @@ export default async function ProfilePage() {
                         <MessageSquare className="h-5 w-5" /> My Discussions
                     </h2>
                     {(myPosts || []).length === 0 ? (
-                        <p className="text-muted-foreground">You haven't posted anything yet.</p>
+                        <p className="text-muted-foreground italic">You haven't posted anything yet.</p>
                     ) : (
                         (myPosts || []).map((post: any) => (
-                            <PostItem key={post.id} post={post} />
+                            <PostItem key={post.id} post={post} user={user} />
                         ))
                     )}
                 </TabsContent>
@@ -84,10 +84,10 @@ export default async function ProfilePage() {
                         <Heart className="h-5 w-5" /> Liked Posts
                     </h2>
                     {likedPosts.length === 0 ? (
-                        <p className="text-muted-foreground">You haven't liked any posts yet.</p>
+                        <p className="text-muted-foreground italic">You haven't liked any posts yet.</p>
                     ) : (
                         likedPosts.map((post: any) => (
-                            <PostItem key={post.id} post={post} />
+                            <PostItem key={post.id} post={post} user={user} />
                         ))
                     )}
                 </TabsContent>
@@ -97,25 +97,36 @@ export default async function ProfilePage() {
                         <MessageSquare className="h-5 w-5" /> My Comments
                     </h2>
                     {(!myComments || myComments.length === 0) ? (
-                        <p className="text-muted-foreground">You haven't commented on anything yet.</p>
+                        <p className="text-muted-foreground italic">You haven't commented on anything yet.</p>
                     ) : (
-                        myComments.map((comment: any) => (
-                            <Link key={comment.id} href={`/forum/forum/post/${comment.post_id}`}>
-                                <Card className="hover:bg-muted/50 transition-colors mb-4">
-                                    <CardHeader className="py-3">
-                                        <CardTitle className="text-base font-medium">
-                                            On: {comment.posts?.title || 'Unknown Post'}
-                                        </CardTitle>
-                                        <div className="text-xs text-muted-foreground">
-                                            {new Date(comment.created_at).toLocaleDateString()}
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="py-3 pt-0 text-sm text-muted-foreground line-clamp-2">
-                                        "{comment.content}"
-                                    </CardContent>
-                                </Card>
-                            </Link>
-                        ))
+                        myComments.map((comment: any) => {
+                            const categorySlug = comment.posts?.categories?.slug || 'general'
+                            return (
+                                <Link key={comment.id} href={`/forum/${categorySlug}/${comment.post_id}`}>
+                                    <Card className="hover:bg-muted/40 transition-all duration-200 border-l-4 border-l-primary/50 hover:border-l-primary group">
+                                        <CardHeader className="py-3 px-4">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                                                        Commented on <span className="text-foreground font-semibold group-hover:underline">{comment.posts?.title || 'Unknown Post'}</span>
+                                                    </CardTitle>
+                                                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                                        <span className="bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground font-medium">f/{categorySlug}</span>
+                                                        <span>•</span>
+                                                        <span>{new Date(comment.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="py-3 pt-0 px-4">
+                                            <div className="relative pl-4 border-l-2 border-muted">
+                                                <p className="text-sm italic text-foreground/80 line-clamp-2">"{comment.content}"</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
+                            )
+                        })
                     )}
                 </TabsContent>
 
@@ -127,26 +138,40 @@ export default async function ProfilePage() {
     )
 }
 
-function PostItem({ post }: { post: Post }) {
+function PostItem({ post, user }: { post: any, user: any }) {
+    // Calculate basic stats if available
+    const votes = post.votes || []
+    const score = votes.reduce((acc: any, v: any) => acc + v.value, 0)
+    const commentCount = post.comments && post.comments[0] ? post.comments[0].count : (post.comments?.length || 0)
+    const categorySlug = post.categories?.slug || 'general'
+
     return (
-        <Link href={`/forum/${post.category_id ? 'post' : 'post'}/${post.id}`}>
-            {/* Note: In real app we need slug. For now forcing generic or relying on id lookup if route handles it. 
-                 Actually the route is /forum/[slug]/[id]. We don't have slug easily here in post object unless we join categories.
-                 Let's stick to /forum/post/[id] if we have a redirect or just /forum/general/[id] if we can guess.
-                 Wait, the Post Item link in previous code was: `/forum/post/${post.id}`.
-                 But the route is `/forum/[slug]/[id]`.
-                 If we don't have the slug, we might break the link.
-                 Let's check if we fetched categories. We did "select *".
-                 Post object has category_id. We need to fetch category slug to link correctly.
-                 Let's modify the fetch to include category slug.
-             */}
-            <Card className="hover:bg-muted/50 transition-colors">
-                <CardHeader>
-                    <CardTitle className="text-lg">{post.title}</CardTitle>
-                    <div className="text-xs text-muted-foreground">
-                        {new Date(post.created_at).toLocaleDateString()}
+        <Link href={`/forum/${categorySlug}/${post.id}`}>
+            <Card className="hover:border-primary/50 transition-all duration-200 group overflow-hidden">
+                <div className="flex">
+                    {/* Mini Vote/Score Indicator */}
+                    <div className="w-12 bg-muted/20 flex flex-col items-center justify-center border-r text-sm font-medium text-muted-foreground">
+                        <div className="font-bold text-foreground">{score}</div>
+                        <div className="text-[10px] uppercase">Votes</div>
                     </div>
-                </CardHeader>
+
+                    <div className="flex-1 p-4 py-3">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                            <span className="font-bold text-foreground/80">f/{categorySlug}</span>
+                            <span>•</span>
+                            <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <h3 className="text-lg font-semibold leading-tight group-hover:text-primary transition-colors mb-2">
+                            {post.title}
+                        </h3>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                                <MessageSquare className="h-3 w-3" />
+                                <span>{commentCount} Comments</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </Card>
         </Link>
     )
