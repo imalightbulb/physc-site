@@ -41,39 +41,41 @@ export default async function SubforumPage({ params }: Props) {
 
     console.log("Fetching posts for category:", category.id)
 
-    // 2. Fetch Posts with Votes, Profiles, and Tags
+    // 2. Fetch Posts with Profiles (removed votes join)
     // We fetch all votes -> simplistic approach for MVP. For scale, use RPC or View.
     const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select('*, profiles(email, student_id), votes(*), comments(count), post_tags(tags(name))')
+        .select('*, profiles(email, student_id), comments(count), post_tags(tags(name))')
         .eq('category_id', category.id)
         .order('created_at', { ascending: false })
 
     if (postsError) console.error("Posts fetch error:", postsError)
-    console.log("Posts found:", postsData?.length)
+
+    // Fetch votes for these posts separately
+    const postIds = postsData?.map(p => p.id) || []
+    const { data: votesData } = postIds.length > 0
+        ? await supabase.from('votes').select('*').in('post_id', postIds)
+        : { data: [] }
+
+    // Group votes by post_id
+    const votesByPost = (votesData || []).reduce((acc: Record<string, Vote[]>, vote) => {
+        if (!acc[vote.post_id]) acc[vote.post_id] = []
+        acc[vote.post_id].push(vote)
+        return acc
+    }, {})
 
     // Process posts to calculate score and user vote
     const posts = ((postsData as unknown as (Post & {
         profiles: { email: string },
-        votes: Vote[],
+        // votes: Vote[], // Removed from join
         post_tags: { tags: { name: string } }[], // Joined tags
         comments: { count: number }[]
-        // Actually Supabase select count is usually returned in `count` property if requested, but here we requested relation.
-        // Let's assume votes is array of objects.
     })[]) || []).map(post => {
-        const votes = post.votes || []
+        const votes = votesByPost[post.id] || []
         const score = votes.reduce((acc, v) => acc + v.value, 0)
         const userVote = user ? votes.find(v => v.user_id === user.id)?.value || 0 : 0
         const tags = post.post_tags?.map(pt => pt.tags.name) || []
         // Fix for comment count check
-        // Often supabase returns `comments: [{count: 5}]` if used with aggregate, but simpler to just use length of ids if we fetched them, 
-        // OR better: use `.select(*, comments(count))` which returns `comments: [{count: N}]` is NOT standard without groupby.
-        // Standard: `.select(*, comments(*))` sends all data.
-        // Optimized: `.select(*, comments(id))` and count length.
-        // Let's just use what we have:
-        // Supabase select with count is tricky in one go without causing huge payload. 
-        // Let's assume for MVP we might not get exact count unless we load them.
-        // Let's safe guard:
         const commentCount = post.comments && Array.isArray(post.comments) ? post.comments[0]?.count ?? 0 : 0;
 
         return {

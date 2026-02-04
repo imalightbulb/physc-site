@@ -20,13 +20,6 @@ export default async function PostPage({ params }: Props) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Logging to file to debug
-    const fs = require('node:fs')
-    const logFile = process.cwd() + '/debug_server.log'
-    const log = (msg: string) => fs.appendFileSync(logFile, new Date().toISOString() + ': ' + msg + '\n')
-
-    log(`Fetching post ${id}...`)
-
     // Fetch Post with author (removed votes join to fix PGRST200 error)
     const { data: post, error } = await supabase
         .from('posts')
@@ -35,15 +28,12 @@ export default async function PostPage({ params }: Props) {
         .single()
 
     if (error) {
-        log(`Error fetching post: ${JSON.stringify(error)}`)
         console.error("Error fetching post:", error)
     }
 
     if (!post) {
-        log(`Post not found (null data) for ID: ${id}`)
+        console.log("Post not found (null data) for ID:", id)
         notFound()
-    } else {
-        log(`Post found: ${post.title}`)
     }
 
     // Fetch dependencies in parallel
