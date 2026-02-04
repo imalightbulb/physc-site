@@ -41,11 +41,10 @@ export default async function SubforumPage({ params }: Props) {
 
     console.log("Fetching posts for category:", category.id)
 
-    // 2. Fetch Posts with Profiles (removed votes join)
-    // We fetch all votes -> simplistic approach for MVP. For scale, use RPC or View.
+    // 2. Fetch Posts with Profiles (removed complexity to debug empty list)
     const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select('*, profiles(email, student_id), comments(count), post_tags(tags(name))')
+        .select('*, profiles(email, student_id)')
         .eq('category_id', category.id)
         .order('created_at', { ascending: false })
 
@@ -74,9 +73,11 @@ export default async function SubforumPage({ params }: Props) {
         const votes = votesByPost[post.id] || []
         const score = votes.reduce((acc, v) => acc + v.value, 0)
         const userVote = user ? votes.find(v => v.user_id === user.id)?.value || 0 : 0
-        const tags = post.post_tags?.map(pt => pt.tags.name) || []
-        // Fix for comment count check
-        const commentCount = post.comments && Array.isArray(post.comments) ? post.comments[0]?.count ?? 0 : 0;
+        const userVote = user ? votes.find(v => v.user_id === user.id)?.value || 0 : 0
+
+        // Tags and Comments count temporarily disabled to fix list visibility
+        const tags: string[] = []
+        const commentCount = 0
 
         return {
             ...post,
