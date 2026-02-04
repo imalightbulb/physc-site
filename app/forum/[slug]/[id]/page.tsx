@@ -20,42 +20,47 @@ export default async function PostPage({ params }: Props) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Fetch Post with author and JOINED data (votes, tags)
-    // Note: getPost helper in data.ts might need refactor, but let's just do it inline or keep using it if it returns enough.
-    // The previous getPost didn't return votes. Let's do a direct fetch for full control.
-    // Simplified fetch to debug 404 issue. 
-    // post_tags might be empty or syntax issues.
-    // Let's assume votes are fetching fine.
-    const { data: post } = await supabase
+    // Logging to file to debug
+    const fs = require('node:fs')
+    const logFile = process.cwd() + '/debug_server.log'
+    const log = (msg: string) => fs.appendFileSync(logFile, new Date().toISOString() + ': ' + msg + '\n')
+
+    log(`Fetching post ${id}...`)
+
+    // Fetch Post with author (removed votes join to fix PGRST200 error)
+    const { data: post, error } = await supabase
         .from('posts')
-        .select('*, profiles(email, student_id), votes(*)')
+        .select('*, profiles(email, student_id)')
         .eq('id', id)
         .single()
 
-    if (!post) {
-        notFound()
-        // return <div>Post not found</div>
+    if (error) {
+        log(`Error fetching post: ${JSON.stringify(error)}`)
+        console.error("Error fetching post:", error)
     }
 
-    const comments = await getComments(id)
+    if (!post) {
+        log(`Post not found (null data) for ID: ${id}`)
+        notFound()
+    } else {
+        log(`Post found: ${post.title}`)
+    }
+
+    // Fetch dependencies in parallel
+    const [comments, votesResult, followResult] = await Promise.all([
+        getComments(id),
+        supabase.from('votes').select('*').eq('post_id', id),
+        user ? supabase.from('post_followers').select('*').match({ user_id: user.id, post_id: id }).single() : Promise.resolve({ data: null })
+    ])
+
+    const votes = votesResult.data || []
+    const isFollowing = !!followResult.data
 
     // Calculate derived state
-    const votes = post.votes || []
     const score = votes.reduce((acc: any, v: any) => acc + v?.value, 0)
     const userVote = user ? votes.find((v: any) => v.user_id === user.id)?.value || 0 : 0
     // Tags temporarily disabled or handled if fetched separately
-    const tags: string[] = [] // post.post_tags?.map((pt: any) => pt.tags.name) || []
-
-    // Check if following
-    let isFollowing = false
-    if (user) {
-        const { data: follow } = await supabase
-            .from('post_followers')
-            .select('*')
-            .match({ user_id: user.id, post_id: id })
-            .single()
-        isFollowing = !!follow
-    }
+    const tags: string[] = []
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">

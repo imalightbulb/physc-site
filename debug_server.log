@@ -1,0 +1,6 @@
+2026-02-03T17:08:06.557Z: Fetching post 3cd41645-2a8d-4d7c-9180-f49388fe9f9a...
+2026-02-03T17:08:07.546Z: Error fetching post: {"code":"PGRST200","details":"Searched for a foreign key relationship between 'posts' and 'votes' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'profiles' instead of 'votes'.","message":"Could not find a relationship between 'posts' and 'votes' in the schema cache"}
+2026-02-03T17:08:07.547Z: Post not found (null data) for ID: 3cd41645-2a8d-4d7c-9180-f49388fe9f9a
+2026-02-03T17:10:13.772Z: Fetching post 3cd41645-2a8d-4d7c-9180-f49388fe9f9a...
+2026-02-03T17:10:14.179Z: Error fetching post: {"code":"PGRST200","details":"Searched for a foreign key relationship between 'posts' and 'votes' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'profiles' instead of 'votes'.","message":"Could not find a relationship between 'posts' and 'votes' in the schema cache"}
+2026-02-03T17:10:14.180Z: Post not found (null data) for ID: 3cd41645-2a8d-4d7c-9180-f49388fe9f9a

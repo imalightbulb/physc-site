@@ -18,11 +18,14 @@ export default async function SubforumPage({ params }: Props) {
     const { data: { user } } = await supabase.auth.getUser()
 
     // 1. Get Category ID from Slug
-    const { data: categoryData } = await supabase
+    const { data: categoryData, error: catError } = await supabase
         .from('categories')
         .select('*')
         .eq('slug', slug)
         .single()
+
+    if (catError) console.error("Category fetch error:", catError)
+    if (!categoryData) console.log("Category not found for slug:", slug)
 
     // Use mock if DB is empty/fails
     const category: Category = categoryData || {
@@ -36,13 +39,18 @@ export default async function SubforumPage({ params }: Props) {
         // Handle 404
     }
 
+    console.log("Fetching posts for category:", category.id)
+
     // 2. Fetch Posts with Votes, Profiles, and Tags
     // We fetch all votes -> simplistic approach for MVP. For scale, use RPC or View.
-    const { data: postsData } = await supabase
+    const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select('*, profiles(email, student_id), votes(*), comments(count), post_tags(tags(name))')
         .eq('category_id', category.id)
         .order('created_at', { ascending: false })
+
+    if (postsError) console.error("Posts fetch error:", postsError)
+    console.log("Posts found:", postsData?.length)
 
     // Process posts to calculate score and user vote
     const posts = ((postsData as unknown as (Post & {
